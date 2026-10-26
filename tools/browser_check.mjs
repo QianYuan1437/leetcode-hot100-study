@@ -4,7 +4,7 @@ import { writeFile } from 'node:fs/promises';
 const port = process.argv[2] || '9222';
 const screenshotPath = process.argv[3];
 const origin = `http://127.0.0.1:${port}`;
-const targetUrl = 'http://127.0.0.1:4173/';
+const targetUrl = process.argv[4] || 'http://127.0.0.1:4173/';
 
 const targetResponse = await fetch(`${origin}/json/new?${encodeURIComponent(targetUrl)}`, { method: 'PUT' });
 if (!targetResponse.ok) throw new Error(`Cannot create browser target: ${targetResponse.status}`);
