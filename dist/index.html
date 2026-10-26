@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="LeetCode HOT 100 中文逐题讲解、Python 3 题解、复杂度与刷题进度追踪。">
+  <meta name="theme-color" content="#f5f1e8">
+  <title>LeetCode HOT 100 · 算法通关手册</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23cde86a'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='monospace' font-weight='700' font-size='20' fill='%2317211d'%3EH100%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="problems.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#problem-list">跳到题目列表</a>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="回到首页">
+      <span class="brand-mark">H100</span>
+      <span>算法通关手册</span>
+    </a>
+    <div class="top-actions">
+      <button class="icon-button" id="random-button" type="button" title="随机一题 (R)" aria-label="随机一题">↝</button>
+      <button class="icon-button" id="theme-button" type="button" title="切换主题" aria-label="切换深浅主题">◐</button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">LEETCODE · TOP 100 LIKED · PYTHON 3</p>
+        <h1 id="hero-title">把 100 道题，<br><em>练成一套方法。</em></h1>
+        <p class="hero-lead">按题型理解不变量、边界与模板。先闭卷想，再分层展开；你的完成状态、收藏与最近阅读只保存在当前浏览器。</p>
+        <div class="hero-actions">
+          <button class="primary-button" id="continue-button" type="button">从第一题开始</button>
+          <button class="secondary-button" id="study-mode-button" type="button">开启专注模式</button>
+        </div>
+      </div>
+      <div class="hero-progress" aria-label="总学习进度">
+        <div class="progress-ring" id="progress-ring" style="--progress:0">
+          <div><strong id="done-count">0</strong><span>/ 100</span></div>
+        </div>
+        <p>已掌握</p>
+        <div class="progress-line"><span id="progress-line-fill"></span></div>
+        <small id="progress-caption">今天，从一道题开始。</small>
+      </div>
+    </section>
+
+    <section class="method-strip" aria-label="使用方法">
+      <article><b>01</b><div><strong>识别信号</strong><span>从数据范围和题型关键词判断工具</span></div></article>
+      <article><b>02</b><div><strong>守住不变量</strong><span>写清窗口、指针、栈或 DP 的语义</span></div></article>
+      <article><b>03</b><div><strong>闭卷复现</strong><span>收藏薄弱题，完成后再看代码</span></div></article>
+    </section>
+
+    <section class="workspace">
+      <aside class="sidebar" aria-label="筛选与专题导航">
+        <div class="sidebar-sticky">
+          <label class="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="search-input" type="search" placeholder="搜索题目、题号或关键词…" autocomplete="off">
+            <kbd>/</kbd>
+          </label>
+          <div class="filter-block">
+            <p class="filter-title">学习状态</p>
+            <div class="segmented" id="status-filters">
+              <button class="active" data-status="all" type="button">全部</button>
+              <button data-status="todo" type="button">未完成</button>
+              <button data-status="done" type="button">已掌握</button>
+              <button data-status="favorite" type="button">收藏</button>
+            </div>
+          </div>
+          <div class="filter-block">
+            <p class="filter-title">难度</p>
+            <div class="difficulty-filters" id="difficulty-filters">
+              <button class="active" data-difficulty="ALL" type="button">全部</button>
+              <button data-difficulty="EASY" type="button">简单</button>
+              <button data-difficulty="MEDIUM" type="button">中等</button>
+              <button data-difficulty="HARD" type="button">困难</button>
+            </div>
+          </div>
+          <nav class="category-nav" id="category-nav" aria-label="专题"></nav>
+          <div class="data-actions">
+            <button id="export-button" type="button">导出学习记录</button>
+            <button id="reset-button" type="button">重置进度</button>
+          </div>
+        </div>
+      </aside>
+
+      <div class="content-column">
+        <div class="list-heading">
+          <div>
+            <p class="eyebrow" id="list-kicker">完整路线</p>
+            <h2 id="list-title">100 道高频题</h2>
+          </div>
+          <p id="result-count">显示 100 道</p>
+        </div>
+        <div id="active-filters" class="active-filters" aria-live="polite"></div>
+        <div id="problem-list" class="problem-list"></div>
+        <div id="empty-state" class="empty-state" hidden>
+          <span>∅</span>
+          <h3>没有匹配的题目</h3>
+          <p>试试清空搜索或切换筛选条件。</p>
+          <button id="clear-filters" class="secondary-button" type="button">清空筛选</button>
+        </div>
+        <footer class="site-footer">
+          <p>题单名称、题号与顺序核对自力扣官方「LeetCode 热题 100」学习计划；题意均为摘要转述，中文讲解与 Python 3 实现为本站独立整理。本站与 LeetCode 无隶属关系。</p>
+          <a href="https://leetcode.cn/studyplan/top-100-liked/" target="_blank" rel="noopener noreferrer">查看官方题单 ↗</a>
+        </footer>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="problem-dialog" class="problem-dialog">
+    <div class="dialog-shell">
+      <header class="dialog-topbar">
+        <button id="dialog-back" class="back-button" type="button">← 返回题单</button>
+        <div class="dialog-actions">
+          <button id="dialog-favorite" class="icon-button" type="button" aria-label="收藏本题">☆</button>
+          <button id="dialog-close" class="icon-button" type="button" aria-label="关闭">×</button>
+        </div>
+      </header>
+      <article id="problem-detail" class="problem-detail"></article>
+      <footer class="dialog-footer">
+        <button id="prev-problem" class="secondary-button" type="button">← 上一题</button>
+        <button id="mark-done" class="primary-button" type="button">标记为已掌握</button>
+        <button id="next-problem" class="secondary-button" type="button">下一题 →</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <noscript>请启用 JavaScript 以使用题目筛选、折叠讲解和进度追踪。</noscript>
+</body>
+</html>
+
