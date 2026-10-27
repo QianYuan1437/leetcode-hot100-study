@@ -110,7 +110,9 @@ def main() -> None:
     parser.feed((ROOT / "dist" / "index.html").read_text(encoding="utf-8"))
     required_ids = {
         "problem-list", "search-input", "category-nav", "status-filters",
-        "difficulty-filters", "problem-dialog", "problem-detail", "mark-done"
+        "difficulty-filters", "problem-dialog", "problem-detail", "mark-done",
+        "mobile-progress-button", "mobile-done-count", "progress-panel",
+        "method-strip", "workspace",
     }
     missing_ids = required_ids - parser.ids
     if missing_ids:

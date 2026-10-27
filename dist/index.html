@@ -21,7 +21,12 @@
       <span class="brand-mark">H100</span>
       <span>算法通关手册</span>
     </a>
+    <nav class="desktop-nav desktop-only" aria-label="桌面快捷导航">
+      <a href="#method-strip">学习方法</a>
+      <a href="#workspace">完整题单</a>
+    </nav>
     <div class="top-actions">
+      <button class="mobile-progress-pill mobile-only" id="mobile-progress-button" type="button" aria-label="查看学习进度"><strong id="mobile-done-count">0</strong><span>/100</span></button>
       <button class="icon-button" id="random-button" type="button" title="随机一题 (R)" aria-label="随机一题">↝</button>
       <button class="icon-button" id="theme-button" type="button" title="切换主题" aria-label="切换深浅主题">◐</button>
     </div>
@@ -38,7 +43,7 @@
           <button class="secondary-button" id="study-mode-button" type="button">开启专注模式</button>
         </div>
       </div>
-      <div class="hero-progress" aria-label="总学习进度">
+      <div class="hero-progress" id="progress-panel" aria-label="总学习进度">
         <div class="progress-ring" id="progress-ring" style="--progress:0">
           <div><strong id="done-count">0</strong><span>/ 100</span></div>
         </div>
@@ -48,13 +53,13 @@
       </div>
     </section>
 
-    <section class="method-strip" aria-label="使用方法">
+    <section class="method-strip" id="method-strip" aria-label="使用方法">
       <article><b>01</b><div><strong>识别信号</strong><span>从数据范围和题型关键词判断工具</span></div></article>
       <article><b>02</b><div><strong>守住不变量</strong><span>写清窗口、指针、栈或 DP 的语义</span></div></article>
       <article><b>03</b><div><strong>闭卷复现</strong><span>收藏薄弱题，完成后再看代码</span></div></article>
     </section>
 
-    <section class="workspace">
+    <section class="workspace" id="workspace">
       <aside class="sidebar" aria-label="筛选与专题导航">
         <div class="sidebar-sticky">
           <label class="search-box">
@@ -129,6 +134,13 @@
       </footer>
     </div>
   </dialog>
+
+  <nav class="mobile-tabbar mobile-only" aria-label="手机快捷导航">
+    <button type="button" data-mobile-target="top"><span aria-hidden="true">⌂</span><small>首页</small></button>
+    <button type="button" data-mobile-target="workspace"><span aria-hidden="true">☷</span><small>题单</small></button>
+    <button type="button" data-mobile-action="random"><span aria-hidden="true">↝</span><small>随机</small></button>
+    <button type="button" data-mobile-target="progress-panel"><span aria-hidden="true">◔</span><small>进度</small></button>
+  </nav>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <noscript>请启用 JavaScript 以使用题目筛选、折叠讲解和进度追踪。</noscript>

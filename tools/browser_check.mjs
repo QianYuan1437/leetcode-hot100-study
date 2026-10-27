@@ -6,6 +6,8 @@ const screenshotPath = process.argv[3];
 const origin = `http://127.0.0.1:${port}`;
 const targetUrl = process.argv[4] || 'http://127.0.0.1:4173/';
 const detailScreenshotPath = process.argv[5];
+const desktopScreenshotPath = process.argv[6];
+const mobileDetailScreenshotPath = process.argv[7];
 
 const targetResponse = await fetch(`${origin}/json/new?${encodeURIComponent(targetUrl)}`, { method: 'PUT' });
 if (!targetResponse.ok) throw new Error(`Cannot create browser target: ${targetResponse.status}`);
@@ -45,6 +47,7 @@ function assert(condition, message) {
 
 await send('Page.enable');
 await send('Runtime.enable');
+await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
 await sleep(1800);
 await evaluate(`localStorage.clear()`);
 await send('Page.reload', { ignoreCache: true });
@@ -59,12 +62,23 @@ const initial = await evaluate(`({
   data: window.HOT100_PROBLEMS?.length,
   enriched: window.HOT100_PROBLEMS?.filter(p => p.statement && p.examples?.length && p.constraints?.length && Array.isArray(p.api_notes)).length,
   cards: document.querySelectorAll('.problem-card').length,
-  title: document.title
+  title: document.title,
+  layout: document.documentElement.dataset.layout,
+  desktopNav: getComputedStyle(document.querySelector('.desktop-nav')).display,
+  mobileNav: getComputedStyle(document.querySelector('.mobile-tabbar')).display,
+  listColumns: getComputedStyle(document.querySelector('.problem-list')).gridTemplateColumns
 })`);
 assert(initial.ready === 'complete', 'page completed loading');
 assert(initial.data === 100 && initial.cards === 100, '100 data records render as 100 cards');
 assert(initial.enriched === 100, 'all 100 records include statements, examples, constraints, and API-note data');
 assert(initial.title.includes('HOT 100'), 'document metadata is present');
+assert(initial.layout === 'desktop' && initial.desktopNav !== 'none' && initial.mobileNav === 'none', 'desktop layout exposes desktop navigation and hides mobile navigation');
+assert(initial.listColumns.trim().split(/\s+/).length === 2, `desktop layout renders a two-column problem list (${initial.listColumns})`);
+if (desktopScreenshotPath) {
+  const screenshot = await send('Page.captureScreenshot', { format: 'png', fromSurface: true });
+  await writeFile(desktopScreenshotPath, Buffer.from(screenshot.data, 'base64'));
+  console.log(`PASS: wrote desktop screenshot to ${desktopScreenshotPath}`);
+}
 
 const detail = await evaluate(`(() => {
   document.querySelector('.problem-card[data-id="1"]').click();
@@ -72,13 +86,15 @@ const detail = await evaluate(`(() => {
     open: document.querySelector('#problem-dialog').open,
     text: document.querySelector('#problem-detail').innerText,
     allText: document.querySelector('#problem-detail').textContent,
-    formula: document.querySelectorAll('#problem-detail .katex').length
+    formula: document.querySelectorAll('#problem-detail .katex').length,
+    statementColumns: getComputedStyle(document.querySelector('.statement-body')).gridTemplateColumns
   };
 })()`);
 assert(detail.open && detail.text.includes('两数之和') && detail.text.includes('Python 3'), 'problem detail dialog opens with explanation and code');
 assert(detail.text.includes('完整题目与输入输出') && detail.text.includes('示例 1') && detail.text.includes('数据范围与约束'), 'problem detail includes the complete statement, examples, and constraints');
 assert(detail.allText.includes('Python 函数 / 方法') && detail.allText.includes('enumerate'), 'problem detail explains Python APIs used by the solution');
 assert(detail.formula > 0, 'KaTeX rendered the problem formula');
+assert(detail.statementColumns.trim().split(/\s+/).length === 2, `desktop detail uses a two-column statement layout (${detail.statementColumns})`);
 if (detailScreenshotPath) {
   await evaluate(`document.querySelector('.statement-card').scrollIntoView({ block: 'start' })`);
   await sleep(250);
@@ -126,20 +142,49 @@ assert(theme.before !== theme.after, 'theme toggle updates the document theme');
 
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
 await send('Page.reload', { ignoreCache: true });
-await sleep(1200);
+for (let attempt = 0; attempt < 40; attempt += 1) {
+  const ready = await evaluate(`document.readyState === 'complete' && document.documentElement.dataset.layout === 'mobile' && document.querySelectorAll('.problem-card').length === 100`);
+  if (ready) break;
+  await sleep(200);
+}
+await evaluate(`window.scrollTo(0, 0)`);
 const mobile = await evaluate(`(() => ({
   clientWidth: document.documentElement.clientWidth,
   scrollWidth: document.documentElement.scrollWidth,
+  layout: document.documentElement.dataset.layout,
+  desktopNav: getComputedStyle(document.querySelector('.desktop-nav')).display,
+  mobileNav: getComputedStyle(document.querySelector('.mobile-tabbar')).display,
+  mobileProgress: getComputedStyle(document.querySelector('#mobile-progress-button')).display,
+  tabHeight: Math.round(document.querySelector('.mobile-tabbar button').getBoundingClientRect().height),
   offenders: [...document.querySelectorAll('body *')]
     .map(el => ({ name: el.tagName + '.' + el.className, right: Math.round(el.getBoundingClientRect().right), width: Math.round(el.getBoundingClientRect().width) }))
     .filter(x => x.right > document.documentElement.clientWidth + 1)
     .slice(0, 8)
 }))()`);
+assert(mobile.layout === 'mobile' && mobile.desktopNav === 'none' && mobile.mobileNav !== 'none' && mobile.mobileProgress !== 'none', 'mobile layout exposes mobile controls and hides desktop navigation');
+assert(mobile.tabHeight >= 44, `mobile navigation provides touch-friendly targets (${mobile.tabHeight}px)`);
 assert(mobile.scrollWidth <= mobile.clientWidth + 1, `mobile layout has no horizontal overflow (${JSON.stringify(mobile)})`);
 if (screenshotPath) {
   const screenshot = await send('Page.captureScreenshot', { format: 'png', fromSurface: true });
   await writeFile(screenshotPath, Buffer.from(screenshot.data, 'base64'));
   console.log(`PASS: wrote mobile screenshot to ${screenshotPath}`);
+}
+const mobileDetail = await evaluate(`(() => {
+  document.querySelector('.problem-card[data-id="1"]').click();
+  return {
+    open: document.querySelector('#problem-dialog').open,
+    statementColumns: getComputedStyle(document.querySelector('.statement-body')).gridTemplateColumns,
+    footerDisplay: getComputedStyle(document.querySelector('.dialog-footer')).display
+  };
+})()`);
+assert(mobileDetail.open && mobileDetail.statementColumns.trim().split(/\s+/).length === 1, `mobile detail collapses statement content to one column (${mobileDetail.statementColumns})`);
+assert(mobileDetail.footerDisplay === 'grid', 'mobile detail uses the dedicated grid action footer');
+if (mobileDetailScreenshotPath) {
+  await evaluate(`document.querySelector('.statement-card').scrollIntoView({ block: 'start' })`);
+  await sleep(250);
+  const screenshot = await send('Page.captureScreenshot', { format: 'png', fromSurface: true });
+  await writeFile(mobileDetailScreenshotPath, Buffer.from(screenshot.data, 'base64'));
+  console.log(`PASS: wrote mobile detail screenshot to ${mobileDetailScreenshotPath}`);
 }
 
 await fetch(`${origin}/json/close/${target.id}`);

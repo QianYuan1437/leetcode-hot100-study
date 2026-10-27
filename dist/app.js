@@ -9,11 +9,15 @@
     saved: loadSaved()
   };
   const $ = s => document.querySelector(s);
+  const layoutMedia = matchMedia('(max-width: 899px)');
+  function syncLayout() { document.documentElement.dataset.layout = layoutMedia.matches ? 'mobile' : 'desktop'; }
+  syncLayout();
+  layoutMedia.addEventListener?.('change', syncLayout);
   const els = {
     list: $('#problem-list'), empty: $('#empty-state'), search: $('#search-input'),
     categoryNav: $('#category-nav'), resultCount: $('#result-count'),
     activeFilters: $('#active-filters'), dialog: $('#problem-dialog'),
-    detail: $('#problem-detail'), doneCount: $('#done-count'), ring: $('#progress-ring'),
+    detail: $('#problem-detail'), doneCount: $('#done-count'), mobileDoneCount: $('#mobile-done-count'), ring: $('#progress-ring'),
     lineFill: $('#progress-line-fill'), caption: $('#progress-caption'),
     continueBtn: $('#continue-button'), markDone: $('#mark-done'), favorite: $('#dialog-favorite'),
     prev: $('#prev-problem'), next: $('#next-problem'), toast: $('#toast')
@@ -99,6 +103,7 @@
   function updateProgress() {
     const n = state.saved.done.length;
     els.doneCount.textContent = n;
+    els.mobileDoneCount.textContent = n;
     els.ring.style.setProperty('--progress', n);
     els.lineFill.style.width = `${n}%`;
     els.caption.textContent = n === 100 ? '全线通关。下一轮：闭卷复现。' : n >= 75 ? '最后冲刺，把薄弱题再做一遍。' : n >= 40 ? '已经越过最难的起步阶段。' : n ? '保持节奏，理解比速度更重要。' : '今天，从一道题开始。';
@@ -159,6 +164,8 @@
     const idx = problems.findIndex(p => String(p.id) === state.currentId);
     if (idx >= 0 && problems[idx + delta]) openProblem(problems[idx + delta].id);
   }
+  function openRandomProblem() { openProblem(problems[Math.floor(Math.random() * problems.length)].id); }
+  function scrollToSection(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   let toastTimer;
   function toast(msg) { els.toast.textContent = msg; els.toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>els.toast.classList.remove('show'), 1800); }
   function resetFilters() {
@@ -186,7 +193,13 @@
   els.markDone.addEventListener('click', () => { const on=toggleIn(state.saved.done,state.currentId); els.markDone.textContent=on?'✓ 已掌握（点击撤销）':'标记为已掌握'; toast(on?'进度已保存':'已撤销完成'); });
   els.favorite.addEventListener('click', () => { const on=toggleIn(state.saved.favorites,state.currentId); els.favorite.textContent=on?'★':'☆'; els.favorite.classList.toggle('active',on); toast(on?'已收藏':'已取消收藏'); });
   els.detail.addEventListener('click', async e => { const b=e.target.closest('.copy-button'); if(!b)return; const code=problems.find(p=>String(p.id)===state.currentId).code; try{await navigator.clipboard.writeText(code);b.textContent='已复制';setTimeout(()=>b.textContent='复制代码',1400);}catch(_){toast('复制失败，请手动选择代码');} });
-  $('#random-button').addEventListener('click',()=>openProblem(problems[Math.floor(Math.random()*problems.length)].id));
+  $('#random-button').addEventListener('click', openRandomProblem);
+  $('#mobile-progress-button').addEventListener('click',()=>scrollToSection('progress-panel'));
+  $('.mobile-tabbar').addEventListener('click',e=>{
+    const button=e.target.closest('button'); if(!button)return;
+    if(button.dataset.mobileAction==='random') openRandomProblem();
+    else if(button.dataset.mobileTarget) scrollToSection(button.dataset.mobileTarget);
+  });
   els.continueBtn.addEventListener('click',()=>openProblem(state.saved.recent || problems.find(p=>!isDone(p.id))?.id || problems[0].id));
   $('#study-mode-button').addEventListener('click',e=>{state.studyMode=!state.studyMode;document.body.classList.toggle('study-mode',state.studyMode);e.target.textContent=state.studyMode?'退出专注模式':'开启专注模式';window.scrollTo({top:0,behavior:'smooth'});});
   $('#theme-button').addEventListener('click',()=>applyTheme(state.saved.theme==='dark'?'light':'dark'));
@@ -194,7 +207,7 @@
   $('#reset-button').addEventListener('click',()=>{if(confirm('确定清空全部完成状态、收藏和最近阅读吗？')){state.saved={done:[],favorites:[],recent:null,theme:state.saved.theme};persist();updateProgress();renderList();toast('进度已重置');}});
   document.addEventListener('keydown', e => {
     if (e.key==='/' && document.activeElement!==els.search && !els.dialog.open) { e.preventDefault(); els.search.focus(); }
-    if ((e.key==='r'||e.key==='R') && document.activeElement?.tagName!=='INPUT' && !els.dialog.open) openProblem(problems[Math.floor(Math.random()*problems.length)].id);
+    if ((e.key==='r'||e.key==='R') && document.activeElement?.tagName!=='INPUT' && !els.dialog.open) openRandomProblem();
     if (els.dialog.open && e.key==='ArrowLeft') moveProblem(-1);
     if (els.dialog.open && e.key==='ArrowRight') moveProblem(1);
   });
