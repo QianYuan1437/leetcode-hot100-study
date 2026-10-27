@@ -9,6 +9,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 from build_content import parse_rows
+from python_api_notes import explain_python_apis, unexplained_python_api_calls
 from solutions import SOLUTIONS
 
 
@@ -60,19 +61,42 @@ def main() -> None:
     if difficulty != Counter({"EASY": 20, "MEDIUM": 68, "HARD": 12}):
         fail(f"unexpected difficulty distribution: {difficulty}")
 
-    required = ("title", "summary", "signal", "invariant", "steps", "time", "space", "pitfall", "code")
+    required = (
+        "title", "summary", "statement", "examples", "constraints", "source_url",
+        "source_license", "signal", "invariant", "steps", "time", "space", "pitfall", "code",
+    )
     for row in rows:
         for key in required:
             if not row[key]:
                 fail(f"problem {row['id']} missing {key}")
         if len(row["steps"]) < 3:
             fail(f"problem {row['id']} needs at least three reasoning steps")
+        if len(str(row["statement"])) < 20:
+            fail(f"problem {row['id']} statement is too short to be complete")
+        if not isinstance(row["examples"], list) or not row["examples"]:
+            fail(f"problem {row['id']} needs at least one input/output example")
+        for example in row["examples"]:
+            if not any(label in example for label in ("输入", "Input")):
+                fail(f"problem {row['id']} example is missing input")
+            if not any(label in example for label in ("输出", "Output")):
+                fail(f"problem {row['id']} example is missing output")
+        if not isinstance(row["constraints"], list) or not row["constraints"]:
+            fail(f"problem {row['id']} is missing constraints")
+        if not str(row["source_url"]).startswith("https://github.com/doocs/leetcode/"):
+            fail(f"problem {row['id']} has an invalid source URL")
+        if row["source_license"] != "CC BY-SA 4.0":
+            fail(f"problem {row['id']} has an invalid source license")
         if "待补充" in row["code"]:
             fail(f"problem {row['id']} still has placeholder code")
         try:
             ast.parse(str(row["code"]))
         except SyntaxError as error:
             fail(f"problem {row['id']} Python syntax error: {error}")
+        unexplained = unexplained_python_api_calls(str(row["code"]))
+        if unexplained:
+            fail(f"problem {row['id']} has undocumented Python APIs: {unexplained}")
+        if row["api_notes"] != explain_python_apis(str(row["code"])):
+            fail(f"problem {row['id']} Python API notes are not deterministic")
 
     if len(SOLUTIONS) != 100 or set(SOLUTIONS) != set(ids):
         fail("solution mapping does not match problem set")
@@ -103,9 +127,9 @@ def main() -> None:
     if len(payload) != 100:
         fail("generated browser bundle does not contain 100 problems")
 
-    print("PASS: 100 problems / 17 categories / 100 Python solutions")
+    print("PASS: 100 complete statements / examples / constraints / Python solutions")
     print(f"PASS: difficulty distribution {dict(difficulty)}")
-    print("PASS: HTML hooks, local assets, JSON bundle, and Python syntax")
+    print("PASS: HTML hooks, local assets, JSON bundle, Python syntax, and API notes")
 
 
 if __name__ == "__main__":

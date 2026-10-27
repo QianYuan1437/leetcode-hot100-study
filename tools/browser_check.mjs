@@ -5,6 +5,7 @@ const port = process.argv[2] || '9222';
 const screenshotPath = process.argv[3];
 const origin = `http://127.0.0.1:${port}`;
 const targetUrl = process.argv[4] || 'http://127.0.0.1:4173/';
+const detailScreenshotPath = process.argv[5];
 
 const targetResponse = await fetch(`${origin}/json/new?${encodeURIComponent(targetUrl)}`, { method: 'PUT' });
 if (!targetResponse.ok) throw new Error(`Cannot create browser target: ${targetResponse.status}`);
@@ -47,16 +48,22 @@ await send('Runtime.enable');
 await sleep(1800);
 await evaluate(`localStorage.clear()`);
 await send('Page.reload', { ignoreCache: true });
-await sleep(900);
+for (let attempt = 0; attempt < 40; attempt += 1) {
+  const ready = await evaluate(`document.readyState === 'complete' && document.querySelectorAll('.problem-card').length === 100`);
+  if (ready) break;
+  await sleep(200);
+}
 
 const initial = await evaluate(`({
   ready: document.readyState,
   data: window.HOT100_PROBLEMS?.length,
+  enriched: window.HOT100_PROBLEMS?.filter(p => p.statement && p.examples?.length && p.constraints?.length && Array.isArray(p.api_notes)).length,
   cards: document.querySelectorAll('.problem-card').length,
   title: document.title
 })`);
 assert(initial.ready === 'complete', 'page completed loading');
 assert(initial.data === 100 && initial.cards === 100, '100 data records render as 100 cards');
+assert(initial.enriched === 100, 'all 100 records include statements, examples, constraints, and API-note data');
 assert(initial.title.includes('HOT 100'), 'document metadata is present');
 
 const detail = await evaluate(`(() => {
@@ -64,11 +71,21 @@ const detail = await evaluate(`(() => {
   return {
     open: document.querySelector('#problem-dialog').open,
     text: document.querySelector('#problem-detail').innerText,
+    allText: document.querySelector('#problem-detail').textContent,
     formula: document.querySelectorAll('#problem-detail .katex').length
   };
 })()`);
 assert(detail.open && detail.text.includes('两数之和') && detail.text.includes('Python 3'), 'problem detail dialog opens with explanation and code');
+assert(detail.text.includes('完整题目与输入输出') && detail.text.includes('示例 1') && detail.text.includes('数据范围与约束'), 'problem detail includes the complete statement, examples, and constraints');
+assert(detail.allText.includes('Python 函数 / 方法') && detail.allText.includes('enumerate'), 'problem detail explains Python APIs used by the solution');
 assert(detail.formula > 0, 'KaTeX rendered the problem formula');
+if (detailScreenshotPath) {
+  await evaluate(`document.querySelector('.statement-card').scrollIntoView({ block: 'start' })`);
+  await sleep(250);
+  const screenshot = await send('Page.captureScreenshot', { format: 'png', fromSurface: true });
+  await writeFile(detailScreenshotPath, Buffer.from(screenshot.data, 'base64'));
+  console.log(`PASS: wrote detail screenshot to ${detailScreenshotPath}`);
+}
 
 const progress = await evaluate(`(() => {
   document.querySelector('#mark-done').click();

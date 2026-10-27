@@ -5,12 +5,15 @@ import json
 from pathlib import Path
 
 try:
+    from python_api_notes import explain_python_apis
     from solutions import SOLUTIONS
 except ModuleNotFoundError:  # support `python -m tools.build_content`
+    from .python_api_notes import explain_python_apis
     from .solutions import SOLUTIONS
 
 
 ROOT = Path(__file__).resolve().parents[1]
+DETAILS_PATH = ROOT / "tools" / "problem_details.json"
 
 # category|id|title|slug|difficulty|pattern|tags|summary|signal|invariant|steps|time|space|pitfall|formula
 RAW = r"""
@@ -118,6 +121,7 @@ RAW = r"""
 
 
 def parse_rows() -> list[dict[str, object]]:
+    problem_details = json.loads(DETAILS_PATH.read_text(encoding="utf-8"))
     rows: list[dict[str, object]] = []
     for order, line in enumerate(RAW.splitlines(), 1):
         parts = line.split("|")
@@ -125,13 +129,21 @@ def parse_rows() -> list[dict[str, object]]:
             raise ValueError(f"row {order} has {len(parts)} fields: {line[:80]}")
         (category, pid, title, slug, difficulty, pattern, tags, summary, signal,
          invariant, steps, time, space, pitfall, formula) = parts
+        code = SOLUTIONS.get(pid, "# 代码待补充")
+        details = problem_details.get(pid)
+        if not details:
+            raise ValueError(f"problem {pid} is missing structured statement details")
         rows.append({
             "order": order, "category": category, "id": pid, "title": title,
             "slug": slug, "difficulty": difficulty, "pattern": pattern,
             "tags": [x for x in tags.split(",") if x], "summary": summary,
             "signal": signal, "invariant": invariant, "steps": steps.split("~"),
             "time": time, "space": space, "pitfall": pitfall,
-            "formula": formula, "code": SOLUTIONS.get(pid, "# 代码待补充")
+            "formula": formula, "code": code,
+            "statement": details["statement"], "examples": details["examples"],
+            "constraints": details["constraints"], "source_url": details["source_url"],
+            "source_license": details["source_license"],
+            "api_notes": explain_python_apis(code),
         })
     return rows
 

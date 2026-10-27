@@ -35,6 +35,7 @@
     persist(); updateProgress(); renderList(); return should;
   }
   function escapeHtml(value='') { return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+  function multiline(value='') { return escapeHtml(value).replace(/\n/g, '<br>'); }
   function highlightPython(code) {
     const tokenPattern = /#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:class|def|return|if|else|elif|for|while|in|not|and|or|is|None|True|False|from|import|as|pass|break|continue|nonlocal)\b|\b\d+(?:\.\d+)?\b/g;
     let html = '';
@@ -53,7 +54,7 @@
   function difficultyLabel(d) { return { EASY: '简单', MEDIUM: '中等', HARD: '困难' }[d] || d; }
   function difficultyClass(d) { return d.toLowerCase(); }
   function matches(p) {
-    const haystack = `${p.id} ${p.title} ${p.slug} ${p.category} ${(p.tags || []).join(' ')} ${p.signal} ${p.summary}`.toLowerCase();
+    const haystack = `${p.id} ${p.title} ${p.slug} ${p.category} ${(p.tags || []).join(' ')} ${p.signal} ${p.summary} ${p.statement || ''}`.toLowerCase();
     const queryOK = !state.query || haystack.includes(state.query.toLowerCase());
     const difficultyOK = state.difficulty === 'ALL' || p.difficulty === state.difficulty;
     const categoryOK = state.category === '全部专题' || p.category === state.category;
@@ -125,6 +126,13 @@
         <p>${escapeHtml(p.summary)}</p>
         <div class="detail-meta"><span class="tag difficulty ${difficultyClass(p.difficulty)}">${difficultyLabel(p.difficulty)}</span>${p.tags.map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
       </header>
+      <details open class="statement-details"><summary>完整题目与输入输出</summary><div class="details-body statement-body">
+        <section class="statement-card"><h3>题意（完整转述）</h3><p>${multiline(p.statement)}</p></section>
+        <section class="example-section"><h3>输入 / 输出示例</h3><div class="example-list">${p.examples.map((example, index)=>`
+          <article class="example-card"><h4>示例 ${index + 1}</h4><pre><code>${escapeHtml(example)}</code></pre></article>`).join('')}</div></section>
+        <section class="constraint-section"><h3>数据范围与约束</h3><ul>${p.constraints.map(item=>`<li><code>${escapeHtml(item)}</code></li>`).join('')}</ul></section>
+        <p class="source-note">题面资料经整理与转述；示例和约束核对自 <a href="${escapeHtml(p.source_url)}" target="_blank" rel="noopener noreferrer">doocs/leetcode</a>（${escapeHtml(p.source_license)}）。</p>
+      </div></details>
       <section class="detail-section"><h3>破题信号</h3><div class="signal-card">${escapeHtml(p.signal)}</div></section>
       <section class="detail-section"><h3>核心不变量</h3><p>${escapeHtml(p.invariant)}</p></section>
       <details open><summary>分步推导</summary><div class="details-body"><ol class="steps">${p.steps.map(s=>`<li><span>${escapeHtml(s)}</span></li>`).join('')}</ol></div></details>
@@ -133,7 +141,12 @@
         <div class="complexity-grid"><div><small>时间复杂度</small><strong>${escapeHtml(p.time)}</strong></div><div><small>空间复杂度</small><strong>${escapeHtml(p.space)}</strong></div></div>
       </div></details>
       <section class="detail-section"><h3>高频易错</h3><div class="pitfall-card">${escapeHtml(p.pitfall)}</div></section>
-      <details><summary>Python 3 参考实现</summary><div class="details-body"><div class="code-wrap"><button class="copy-button" type="button">复制代码</button><pre><code>${highlightPython(p.code)}</code></pre></div></div></details>
+      <details><summary>Python 3 参考实现与 API 说明</summary><div class="details-body">
+        <div class="code-wrap"><button class="copy-button" type="button">复制代码</button><pre><code>${highlightPython(p.code)}</code></pre></div>
+        <section class="api-notes"><h3>代码中用到的 Python 函数 / 方法</h3>
+          ${p.api_notes.length ? `<dl>${p.api_notes.map(note=>`<div><dt><code>${escapeHtml(note.name)}</code></dt><dd>${escapeHtml(note.description)}</dd></div>`).join('')}</dl>` : '<p>这份实现只使用变量、控制流、属性访问或题目自定义辅助函数，没有额外调用需要说明的 Python 内置函数或标准库 API。</p>'}
+        </section>
+      </div></details>
       <section class="detail-section"><a class="leetcode-link" href="https://leetcode.cn/problems/${encodeURIComponent(p.slug)}/" target="_blank" rel="noopener noreferrer">在力扣打开原题 ↗</a></section>`;
     if (!els.dialog.open) els.dialog.showModal();
     els.dialog.scrollTop = 0; renderMath(els.detail); location.hash = `problem-${p.id}`;
